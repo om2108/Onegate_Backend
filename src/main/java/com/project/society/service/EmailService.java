@@ -1,39 +1,54 @@
 package com.project.society.service;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final WebClient webClient;
 
-    private static final String FROM_EMAIL = "yourgmail@gmail.com";
+    @Value("${RESEND_API_KEY}")
+    private String apiKey;
+
+    public EmailService() {
+        this.webClient = WebClient.builder()
+                .baseUrl("https://api.resend.com")
+                .build();
+    }
 
     public void sendOtpCode(String toEmail, String code) {
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-
-            message.setFrom(FROM_EMAIL);
-            message.setTo(toEmail);
-            message.setSubject("OneGate — Verification Code");
-            message.setText(
-                    "Hello,\n\n" +
-                            "Your OneGate OTP code is: " + code + "\n\n" +
-                            "This code expires in 10 minutes.\n\n" +
-                            "If you didn’t request this, please ignore."
+            Map<String, Object> requestBody = Map.of(
+                    "from", "OneGate <onboarding@resend.dev>",
+                    "to", new String[]{toEmail},
+                    "subject", "Your OneGate Verification Code",
+                    "html",
+                    "<div style='font-family: Arial; padding:20px;'>"
+                            + "<h2>OneGate Verification</h2>"
+                            + "<p>Your OTP code:</p>"
+                            + "<h1 style='letter-spacing:5px;'>" + code + "</h1>"
+                            + "<p>Expires in 10 minutes.</p>"
+                            + "</div>"
             );
 
-            mailSender.send(message);
-
-            System.out.println("✅ OTP Email sent via Gmail SMTP");
+            webClient.post()
+                    .uri("/emails")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .doOnNext(res -> System.out.println("✅ OTP Email sent via Resend"))
+                    .block();
 
         } catch (Exception ex) {
-            System.out.println("❌ Gmail Email Error: " + ex.getMessage());
+            System.out.println("❌ Resend Email Error: " + ex.getMessage());
         }
     }
 
@@ -42,28 +57,45 @@ public class EmailService {
         String inviteLink =
                 "https://onegate.onrender.com/onboarding?email=" + email;
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(FROM_EMAIL);
-        message.setTo(email);
-        message.setSubject("OneGate Invitation");
-        message.setText(
-                "You are invited to join OneGate.\n\n" +
-                        "Complete setup:\n" + inviteLink
+        Map<String, Object> requestBody = Map.of(
+                "from", "OneGate <onboarding@resend.dev>",
+                "to", new String[]{email},
+                "subject", "OneGate Invitation",
+                "html",
+                "<h2>You're Invited 🎉</h2>"
+                        + "<p>Complete setup:</p>"
+                        + "<a href='" + inviteLink + "'>" + inviteLink + "</a>"
         );
 
-        mailSender.send(message);
+        webClient.post()
+                .uri("/emails")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 
     public void sendResetCode(String email, String code) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(FROM_EMAIL);
-        message.setTo(email);
-        message.setSubject("OneGate — Reset Password");
-        message.setText(
-                "Your password reset code is: " + code
+        Map<String, Object> requestBody = Map.of(
+                "from", "OneGate <onboarding@resend.dev>",
+                "to", new String[]{email},
+                "subject", "Reset Your Password",
+                "html",
+                "<h2>Password Reset</h2>"
+                        + "<p>Your reset code:</p>"
+                        + "<h1>" + code + "</h1>"
         );
 
-        mailSender.send(message);
+        webClient.post()
+                .uri("/emails")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 }
