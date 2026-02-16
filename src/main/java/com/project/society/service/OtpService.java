@@ -1,4 +1,3 @@
-// src/main/java/com/project/society/service/OtpService.java
 package com.project.society.service;
 
 import com.project.society.model.OtpToken;
@@ -17,33 +16,45 @@ public class OtpService {
 
     private final OtpTokenRepository repo;
     private final EmailService emailService;
+
     private final SecureRandom random = new SecureRandom();
 
-    // generate and send OTP
     public String generateOtp(String email) {
+
         String code = String.format("%06d", random.nextInt(1_000_000));
+
         OtpToken token = new OtpToken();
         token.setEmail(email);
         token.setCode(code);
-        token.setExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES));
+        token.setExpiresAt(
+                Instant.now().plus(10, ChronoUnit.MINUTES)
+        );
+
         repo.save(token);
 
-        // send email (you already have sendInviteLink; use simple mail)
-        emailService.sendOtpCode(email, code); // implement method below
+        System.out.println("📨 Sending OTP to: " + email);
+
+        emailService.sendOtpCode(email, code);
+
         return code;
     }
 
-    // verify - returns true if code matches and not expired
     public boolean verifyOtp(String email, String code) {
-        Optional<OtpToken> opt = repo.findTopByEmailOrderByCreatedAtDesc(email);
+
+        Optional<OtpToken> opt =
+                repo.findTopByEmailOrderByCreatedAtDesc(email);
+
         if (opt.isEmpty()) return false;
-        OtpToken t = opt.get();
-        if (t.getExpiresAt() == null || Instant.now().isAfter(t.getExpiresAt())) return false;
-        if (!t.getCode().equals(code)) return false;
-        return true;
+
+        OtpToken token = opt.get();
+
+        if (token.getExpiresAt() == null ||
+                Instant.now().isAfter(token.getExpiresAt()))
+            return false;
+
+        return token.getCode().equals(code);
     }
 
-    // delete tokens for email (cleanup after success)
     public void deleteOtpForEmail(String email) {
         repo.deleteByEmail(email);
     }
