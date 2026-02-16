@@ -24,6 +24,9 @@ public class EmailService {
     public void sendOtpCode(String toEmail, String code) {
 
         try {
+            System.out.println("🔑 RESEND API KEY = " + apiKey);
+            System.out.println("📨 Sending OTP to: " + toEmail);
+
             Map<String, Object> requestBody = Map.of(
                     "from", "OneGate <onboarding@resend.dev>",
                     "to", new String[]{toEmail},
