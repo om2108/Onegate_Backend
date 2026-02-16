@@ -43,10 +43,16 @@
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
-        <!-- ✅ WebClient (REQUIRED for Resend API) -->
+        <!-- ✅ WebClient (Resend API) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- ✅ WebSocket (FIXED) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
         <!-- VALIDATION -->
@@ -70,7 +76,6 @@
         </dependency>
 
     </dependencies>
-
 
     <build>
         <plugins>
