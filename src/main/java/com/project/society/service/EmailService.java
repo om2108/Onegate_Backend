@@ -1,101 +1,97 @@
 package com.project.society.service;
 
-import com.sendgrid.*;
-import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-import com.sendgrid.helpers.mail.objects.Email;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Map;
 
 @Service
 public class EmailService {
 
+    private final WebClient webClient;
+
+    @Value("${RESEND_API_KEY}")
+    private String apiKey;
+
     private static final String FROM_EMAIL = "pawarnandkumaromved@gmail.com";
 
-    // ✅ Generic SendGrid sender
-    public void sendEmail(String to, String subject, Content content) {
+    public EmailService() {
+        this.webClient = WebClient.builder()
+                .baseUrl("https://api.resend.com")
+                .build();
+    }
+
+    public void sendOtpCode(String toEmail, String code) {
 
         try {
-            Email from = new Email(FROM_EMAIL, "OneGate");
-            Email receiver = new Email(to);
+            Map<String, Object> requestBody = Map.of(
+                    "from", "OneGate <" + FROM_EMAIL + ">",
+                    "to", new String[]{toEmail},
+                    "subject", "Your OneGate login code",
+                    "html", "<h2>OneGate Verification</h2>"
+                            + "<p>Your OTP code:</p>"
+                            + "<h1>" + code + "</h1>"
+                            + "<p>Expires in 10 minutes.</p>"
+            );
 
-            Mail mail = new Mail(from, subject, receiver, content);
-
-            SendGrid sg = new SendGrid(System.getenv("SENDGRID_API_KEY"));
-
-            Request request = new Request();
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-
-            Response response = sg.api(request);
-
-            System.out.println("✅ Email sent → Status: " + response.getStatusCode());
+            webClient.post()
+                    .uri("/emails")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .doOnNext(res -> System.out.println("✅ Resend response: " + res))
+                    .block();
 
         } catch (Exception ex) {
-            System.out.println("❌ Email error: " + ex.getMessage());
+            System.out.println("❌ Resend Email Error: " + ex.getMessage());
         }
     }
 
-    // ✅ Reusable HTML Template Builder
-    private Content buildHtmlContent(String title, String message, String highlight) {
-
-        String html =
-                "<div style='font-family: Arial, sans-serif; padding:20px; background:#f4f6f8;'>"
-                        + "  <div style='max-width:420px; margin:auto; background:white; padding:25px; border-radius:12px; box-shadow:0 5px 15px rgba(0,0,0,0.08);'>"
-                        + "      <h2 style='color:#2E86C1; text-align:center; margin-bottom:20px;'>" + title + "</h2>"
-                        + "      <p style='font-size:15px; color:#333;'>" + message + "</p>"
-                        + (highlight != null
-                        ? "  <h1 style='text-align:center; letter-spacing:4px; color:#222; margin:20px 0;'>" + highlight + "</h1>"
-                        : "")
-                        + "      <hr style='margin:20px 0;'>"
-                        + "      <small style='color:gray;'>If you didn’t request this, you can safely ignore this email.</small>"
-                        + "  </div>"
-                        + "</div>";
-
-        return new Content("text/html", html);
-    }
-
-    // =========================
-    // ✅ OTP EMAIL
-    // =========================
-    public void sendOtpCode(String email, String code) {
-
-        Content content = buildHtmlContent(
-                "OneGate Verification 🔐",
-                "Use the verification code below to continue:",
-                code
-        );
-
-        sendEmail(email, "Complete your OneGate verification", content);
-    }
-
-    // =========================
-    // ✅ INVITE EMAIL
-    // =========================
     public void sendInviteLink(String email) {
 
         String inviteLink = "https://onegate.onrender.com/onboarding?email=" + email;
 
-        Content content = buildHtmlContent(
-                "You're Invited to OneGate 🎉",
-                "Click the link below to complete your account setup:",
-                "<a href='" + inviteLink + "' style='color:#2E86C1;'>" + inviteLink + "</a>"
+        Map<String, Object> requestBody = Map.of(
+                "from", "OneGate <" + FROM_EMAIL + ">",
+                "to", new String[]{email},
+                "subject", "OneGate Invitation",
+                "html", "<h2>You're Invited 🎉</h2>"
+                        + "<p>Complete setup:</p>"
+                        + "<a href='" + inviteLink + "'>" + inviteLink + "</a>"
         );
 
-        sendEmail(email, "OneGate Invitation", content);
+        webClient.post()
+                .uri("/emails")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 
-    // =========================
-    // ✅ RESET PASSWORD EMAIL
-    // =========================
     public void sendResetCode(String email, String code) {
 
-        Content content = buildHtmlContent(
-                "Reset Your Password 🔑",
-                "Use the code below to reset your password:",
-                code
+        Map<String, Object> requestBody = Map.of(
+                "from", "OneGate <" + FROM_EMAIL + ">",
+                "to", new String[]{email},
+                "subject", "Reset Your Password",
+                "html", "<h2>Password Reset</h2>"
+                        + "<p>Your reset code:</p>"
+                        + "<h1>" + code + "</h1>"
         );
 
-        sendEmail(email, "OneGate Password Reset", content);
+        webClient.post()
+                .uri("/emails")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 }
